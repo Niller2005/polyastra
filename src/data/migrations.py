@@ -3,6 +3,15 @@
 from typing import List, Callable, Any
 from src.utils.logger import log, log_error
 from src.data.db_connection import db_connection
+from src.data.schema import (
+    backfill_orders,
+    backfill_orders_history,
+    backfill_positions,
+    backfill_window_stats,
+    backfill_windows,
+    ensure_normalized_tables,
+    ensure_normalization_triggers,
+)
 
 
 def get_schema_version(conn: Any) -> int:
@@ -112,6 +121,27 @@ def migration_005_add_last_scale_in_at_column(conn: Any) -> None:
         log("    ✓ last_scale_in_at column already exists")
 
 
+def migration_006_create_normalized_tables(conn: Any) -> None:
+    """Create windows/positions/orders tables and keep them synchronized"""
+    c = conn.cursor()
+
+    log("  - Ensuring normalized tables exist")
+    ensure_normalized_tables(c)
+    log("  - Ensuring normalization triggers exist")
+    ensure_normalization_triggers(c)
+
+    log("  - Backfilling windows table")
+    backfill_windows(c)
+    log("  - Backfilling positions table")
+    backfill_positions(c)
+    log("  - Backfilling orders table")
+    backfill_orders(c)
+    log("  - Backfilling window stats table")
+    backfill_window_stats(c)
+    log("  - Backfilling orders history table")
+    backfill_orders_history(c)
+
+
 # Migration registry: version -> migration function
 MIGRATIONS: List[tuple[int, str, Callable]] = [
     (1, "Add scale_in_order_id column", migration_001_add_scale_in_order_id),
@@ -126,6 +156,11 @@ MIGRATIONS: List[tuple[int, str, Callable]] = [
         5,
         "Add last_scale_in_at column",
         migration_005_add_last_scale_in_at_column,
+    ),
+    (
+        6,
+        "Create normalized windows/positions/orders tables",
+        migration_006_create_normalized_tables,
     ),
 ]
 

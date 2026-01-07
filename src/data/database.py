@@ -7,6 +7,10 @@ from src.config.settings import DB_FILE, REPORTS_DIR
 from src.utils.logger import log, send_discord
 from src.data.db_connection import db_connection
 from src.data.migrations import run_migrations
+from src.data.schema import (
+    ensure_normalized_tables,
+    ensure_normalization_triggers,
+)
 
 
 def init_database():
@@ -28,11 +32,14 @@ def init_database():
                 final_outcome TEXT, exit_price REAL, pnl_usd REAL, roi_pct REAL,
                 settled BOOLEAN DEFAULT 0, settled_at TEXT, exited_early BOOLEAN DEFAULT 0,
                 scaled_in BOOLEAN DEFAULT 0, is_reversal BOOLEAN DEFAULT 0, target_price REAL,
-                reversal_triggered BOOLEAN DEFAULT 0, reversal_triggered_at TEXT
+                reversal_triggered BOOLEAN DEFAULT 0, reversal_triggered_at TEXT,
+                last_scale_in_at TEXT
             )
         """)
         c.execute("CREATE INDEX IF NOT EXISTS idx_symbol ON trades(symbol)")
         c.execute("CREATE INDEX IF NOT EXISTS idx_settled ON trades(settled)")
+        ensure_normalized_tables(c)
+        ensure_normalization_triggers(c)
 
     log("✓ Database initialized")
 

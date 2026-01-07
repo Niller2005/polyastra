@@ -14,6 +14,10 @@ Migrations are defined in `src/data/migrations.py` in the `MIGRATIONS` list:
 MIGRATIONS: List[tuple[int, str, Callable]] = [
     (1, "Add scale_in_order_id column", migration_001_add_scale_in_order_id),
     (2, "Verify timestamp column", migration_002_add_created_at_column),
+    (3, "Add reversal_triggered column", migration_003_add_reversal_triggered_column),
+    (4, "Add reversal_triggered_at column", migration_004_add_reversal_triggered_at_column),
+    (5, "Add last_scale_in_at column", migration_005_add_last_scale_in_at_column),
+    (6, "Create normalized windows/positions/orders tables", migration_006_create_normalized_tables),
     # Add new migrations here...
 ]
 ```
@@ -151,6 +155,17 @@ uv run python -c "import sqlite3; conn = sqlite3.connect('trades.db'); c = conn.
 | 3 | Add reversal_triggered column | ✅ |
 | 4 | Add reversal_triggered_at column | ✅ |
 | 5 | Add last_scale_in_at column | ✅ |
+| 6 | Create normalized windows/positions/orders tables | ✅ |
+
+## Normalized Tables Overview
+
+- `windows`: Unique record per symbol/window capturing timing, slug, token, status, and settlement metadata.
+- `positions`: 1:1 mirror of `trades` enriched with window references plus lifecycle flags (`status`, `settled`, `scaled_in`).
+- `orders`: Ledger of every entry, limit exit, and scale-in order associated with each trade, including role, status, and sizing details.
+- `window_stats`: Aggregated metrics per window (counts, exposure, average edge/ROI, realized/unrealized PnL) that refresh automatically when trades change.
+- `balances`: Stores USDC balance snapshots and per-symbol exposures for each window, ready for future risk/audit workflows.
+- `signals`: Captures the named signals/indicators (per window or trade) that drove a decision, including confidence and optional metadata payload.
+- `orders_history`: Append-only audit log of order lifecycle events (created/updated/deleted) with status transitions and sizing info.
 
 ## Rollback
 

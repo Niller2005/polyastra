@@ -41,7 +41,7 @@ Automated trading bot for **15-minute crypto prediction markets** on Polymarket.
 ### 💰 Automated Operations
 - **Dashboard**: Interactive HTML dashboard with live stats
 - **Discord**: Real-time trade notifications
-- **Database**: Full SQLite tracking of all trades
+- **Database**: Normalized SQLite schema (`windows`, `positions`, `orders`, `window_stats`, `balances`, `signals`, `orders_history`) for full trade + order lifecycle tracking and analytics
 
 ## 🛠️ Installation
 

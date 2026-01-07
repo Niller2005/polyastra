@@ -17,6 +17,7 @@ def db_connection():
             cursor.execute("SELECT * FROM trades WHERE settled = 0")
     """
     conn = sqlite3.connect(DB_FILE, timeout=30.0)
+    conn.execute("PRAGMA foreign_keys = ON")
     try:
         yield conn
         conn.commit()
