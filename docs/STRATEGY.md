@@ -308,7 +308,7 @@ Before sending a batch of orders (`place_batch_orders`), the bot performs a **pr
 
 ### Heartbeat & Stability
 To maintain a stable connection with the Polymarket API during long-running sessions:
-- The bot executes a **30-second heartbeat** (`client.heartbeat()`) within the main monitoring loop.
+- The bot executes a **30-second heartbeat** (`client.post_heartbeat(None)`) within the main monitoring loop.
 - This prevents session timeouts and ensures the API client remains authenticated and responsive.
 
 ### Precision & Tick Size

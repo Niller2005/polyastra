@@ -47,7 +47,10 @@ trade_id = execute_trade(trade_params, is_reversal=False)
 ## Common Code Patterns
 
 ### Heartbeat
-The main loop in `src/bot.py` calls `client.heartbeat()` every 30 seconds to maintain stable API connections.
+The main loop in `src/bot.py` calls `client.post_heartbeat(None)` every 30 seconds to maintain stable API connections.
+
+### USDC Allowance
+The bot automatically manages its USDC allowance. `ensure_allowance(required_amount)` in `src.trading.orders.balances` will trigger an on-chain `approve` transaction via `src.utils.web3_utils.approve_usdc` if the current allowance is insufficient.
 
 ### Balance & Allowance
 `get_balance_allowance(token_id=None)` has been moved to `src.trading.orders.balances` to break circular dependencies. Always import from there.

@@ -459,9 +459,7 @@ def main():
 
             if now_ts - last_heartbeat >= 30:
                 try:
-                    from src.trading.orders import client
-
-                    client.heartbeat()
+                    get_clob_client().post_heartbeat(None)
                     last_heartbeat = now_ts
                 except Exception as e:
                     log(f"⚠️  Heartbeat error: {e}")

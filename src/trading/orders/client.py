@@ -26,14 +26,6 @@ client = ClobClient(
 if not hasattr(client, "builder_config"):
     setattr(client, "builder_config", None)
 
-# Hotfix: ensure client has heartbeat method (V1)
-if not hasattr(client, "heartbeat"):
-
-    def heartbeat_shim():
-        return client.post_heartbeat(None)
-
-    setattr(client, "heartbeat", heartbeat_shim)
-
 
 def get_clob_client() -> ClobClient:
     """Get the initialized CLOB client"""

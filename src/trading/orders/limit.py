@@ -16,7 +16,7 @@ from .utils import (
     _parse_api_error,
     is_post_only_rejection,
 )
-from .balances import get_balance_allowance
+from .balances import get_balance_allowance, ensure_allowance
 
 
 def place_limit_order(
@@ -162,22 +162,19 @@ def place_batch_orders(orders: List[Dict[str, Any]]) -> List[dict]:
         op["price"] * op["size"] for op in validated if op.get("side", BUY) == BUY
     )
     if total_buy_usd > 0:
-        bal_info = get_balance_allowance()
-        if bal_info:
-            allowance = bal_info.get("allowance", 0)
-            if allowance < total_buy_usd:
-                log_error(
-                    f"❌ Pre-flight check failed: USDC allowance ({allowance:.2f}) < required (${total_buy_usd:.2f})"
+        if not ensure_allowance(total_buy_usd):
+            log_error(
+                f"❌ Pre-flight check failed: Insufficient USDC allowance and approval failed."
+            )
+            for _ in validated:
+                results.append(
+                    {
+                        "success": False,
+                        "status": "ALLOWANCE_ERROR",
+                        "error": "Insufficient USDC allowance",
+                    }
                 )
-                for _ in validated:
-                    results.append(
-                        {
-                            "success": False,
-                            "status": "ALLOWANCE_ERROR",
-                            "error": "Insufficient USDC allowance",
-                        }
-                    )
-                return results
+            return results
 
     try:
         _ensure_api_creds(client)

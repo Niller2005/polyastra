@@ -7,7 +7,8 @@ description: Chronological log of system improvements and session summaries for 
 
 ### 2026-01-07
 - **Graceful Post-Only Rejection Handling**: Implemented automatic single-retry for limit orders that fail due to crossing the spread. The retry adjusts the price by ±0.0001. Added `is_post_only_rejection` utility.
-- **Heartbeat Implementation**: Added 30-second `client.heartbeat()` calls to the main loop in `src/bot.py` for API connection stability.
+- **Heartbeat Implementation**: Added 30-second `client.post_heartbeat(None)` calls to the main loop in `src/bot.py` for API connection stability.
+- **Automatic USDC Allowance**: Implemented `ensure_allowance` logic that automatically triggers on-chain `approve` transactions if the USDC allowance is zero or insufficient for the current trade.
 - **Pre-flight Allowance Guardrails**: Added USDC allowance checks in `place_batch_orders` to prevent 400 errors from the API when allowance is insufficient.
 - **Architectural Refactor**: Moved `get_balance_allowance` to `src/trading/orders/balances.py` to resolve circular dependency issues between limit and position modules.
 - **Sizing Safety**: Implemented strict USDC balance snapshotting at the start of every 15-minute window. All sizing calculations now use this snapshot to ensure consistency and prevent over-allocation.

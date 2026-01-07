@@ -5,6 +5,7 @@ from eth_account import Account
 from src.config.settings import (
     POLYGON_RPC,
     USDC_ADDRESS,
+    EXCHANGE_ADDRESS,
     CTF_ADDRESS,
     CTF_ABI,
     PROXY_PK,
@@ -26,6 +27,45 @@ def get_balance(addr: str) -> float:
         return raw / 1e6
     except Exception:
         return 0.0
+
+
+def approve_usdc(spender: str, amount: float = 1_000_000.0) -> bool:
+    """Approve USDC for spender"""
+    try:
+        log(f"🚀 Attempting USDC approval for {spender} (Amount: ${amount})...")
+        abi = '[{"constant":false,"inputs":[{"name":"_spender","type":"address"},{"name":"_value","type":"uint256"}],"name":"approve","outputs":[{"name":"","type":"bool"}],"type":"function"}]'
+        contract = w3.eth.contract(
+            address=Web3.to_checksum_address(USDC_ADDRESS), abi=abi
+        )
+        account = Account.from_key(PROXY_PK)
+        my_address = account.address
+
+        raw_amount = int(amount * 1e6)
+
+        tx = contract.functions.approve(
+            Web3.to_checksum_address(spender), raw_amount
+        ).build_transaction(
+            {
+                "from": my_address,
+                "nonce": w3.eth.get_transaction_count(my_address),
+                "gas": 100000,
+                "gasPrice": w3.eth.gas_price,
+            }
+        )
+
+        signed_tx = w3.eth.account.sign_transaction(tx, private_key=PROXY_PK)
+        tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+
+        receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
+        if receipt["status"] == 1:
+            log(f"✅ USDC approval successful! TX: {tx_hash.hex()}")
+            return True
+        else:
+            log_error(f"❌ USDC approval failed! TX: {tx_hash.hex()}")
+            return False
+    except Exception as e:
+        log_error(f"❌ USDC approval error: {e}")
+        return False
 
 
 def redeem_winnings(condition_id_hex: str, neg_risk: bool = False) -> bool:
