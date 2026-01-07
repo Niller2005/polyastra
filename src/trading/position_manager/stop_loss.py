@@ -324,29 +324,22 @@ def _check_stop_loss(
     )
 
     # CANCEL ANY PENDING ORDERS
-    if limit_sell_order_id:
-        l_status = get_order_status(limit_sell_order_id)
-        if l_status in ["FILLED", "MATCHED"]:
-            log(
-                f"   ℹ️  [{symbol}] #{trade_id} Stop loss skipped: Exit plan already filled."
-            )
-            c.execute(
-                "UPDATE trades SET order_status = 'EXIT_PLAN_FILLED', settled=1, exited_early=1, pnl_usd=?, roi_pct=? WHERE id=?",
-                (pnl_usd, pnl_pct, trade_id),
-            )
-            return True
+    from src.trading.orders import cancel_market_orders
 
-        if cancel_order(limit_sell_order_id):
-            log(
-                f"   🔓 [{symbol}] #{trade_id} Cancelled existing exit plan to execute stop loss."
-            )
-            time.sleep(1)  # Short wait for exchange to unlock tokens
+    # Aggressively clear ALL open orders for this token to unlock balance
+    log(
+        f"   🔓 [{symbol}] #{trade_id} Clearing all open orders for token {token_id[:10]}..."
+    )
+    cancel_market_orders(asset_id=token_id)
 
     if scale_in_order_id:
         log(
             f"   Sweep [{symbol}] #{trade_id} Stop Loss: Cancelling pending scale-in order {scale_in_order_id[:10]}..."
         )
         cancel_order(scale_in_order_id)
+
+    # Wait a moment for the exchange to process cancellations and unlock balance
+    time.sleep(1.5)
 
     sell_result = sell_position(token_id, size, current_price)
     if not sell_result["success"]:
