@@ -250,7 +250,7 @@ def _check_exit_plan(
                     pass
                 elif o_status in ["CANCELED", "EXPIRED"]:
                     log(
-                        f"   ⚠️  [{symbol}] #{trade_id} Exit plan order was {o_status}. Clearing from DB to allow retry."
+                        f"   ⚠️  [{symbol}] #{trade_id} Exit plan order {limit_sell_id[:10]}... was {o_status}. Clearing from DB to allow retry."
                     )
                     c.execute(
                         "UPDATE trades SET limit_sell_order_id = NULL WHERE id = ?",

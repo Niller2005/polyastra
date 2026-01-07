@@ -116,6 +116,34 @@ def check_open_positions(verbose=True, check_orders=False, snapshot_balance=None
                     curr_b_status = b_status
                     if b_id and (b_status != "FILLED" or entry == 0):
                         curr_b_status = get_order_status(b_id)
+                        if curr_b_status == "CANCELED":
+                            # Check if we actually got filled before it was canceled
+                            from src.trading.orders import get_balance_allowance
+
+                            balance_info = get_balance_allowance(tok)
+                            actual_bal = (
+                                balance_info.get("balance", 0) if balance_info else 0
+                            )
+
+                            if actual_bal < 0.1:
+                                log(
+                                    f"   ⚠️  [{sym}] #{tid} Entry order was CANCELED with 0 balance. Settling."
+                                )
+                                c.execute(
+                                    "UPDATE trades SET settled=1, final_outcome='CANCELED' WHERE id=?",
+                                    (tid,),
+                                )
+                                continue
+                            else:
+                                log(
+                                    f"   🔔 [{sym}] #{tid} Entry order was CANCELED but balance found (${actual_bal:.2f}). Marking as FILLED."
+                                )
+                                c.execute(
+                                    "UPDATE trades SET order_status = 'FILLED' WHERE id = ?",
+                                    (tid,),
+                                )
+                                curr_b_status = "FILLED"
+
                         if curr_b_status in ["FILLED", "MATCHED"]:
                             o_data = get_order(b_id)
                             if o_data:

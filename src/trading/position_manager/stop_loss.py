@@ -33,6 +33,7 @@ from src.trading import (
     _calculate_bet_size,
     _determine_trade_side,
 )
+from .shared import _last_exit_attempt
 
 
 def _trigger_price_based_reversal(
@@ -177,12 +178,18 @@ def _check_stop_loss(
     if current_price > dynamic_trigger or size == 0:
         return False
 
+    # Check cooldown to avoid spamming exchange on failed sells
+    last_att = _last_exit_attempt.get(trade_id, 0)
+    if now.timestamp() - last_att < 10:
+        return False
+
     # TRIGGER REVERSAL FIRST
     if not reversal_triggered:
         if ENABLE_REVERSAL:
             log(
                 f"🔄 [{symbol}] #{trade_id} {side} midpoint ${current_price:.2f} <= ${dynamic_trigger:.2f} trigger. INITIATING REVERSAL."
             )
+            _last_exit_attempt[trade_id] = now.timestamp()
             if _trigger_price_based_reversal(symbol, trade_id, side, c, conn):
                 # Mark as reversal triggered so next cycle can stop loss if needed
                 c.execute(
@@ -332,6 +339,12 @@ def _check_stop_loss(
     )
     cancel_market_orders(asset_id=token_id)
 
+    # NEW: Clear limit_sell_order_id from DB since we just canceled it on exchange
+    c.execute(
+        "UPDATE trades SET limit_sell_order_id = NULL WHERE id = ?",
+        (trade_id,),
+    )
+
     if scale_in_order_id:
         log(
             f"   Sweep [{symbol}] #{trade_id} Stop Loss: Cancelling pending scale-in order {scale_in_order_id[:10]}..."
@@ -341,6 +354,7 @@ def _check_stop_loss(
     # Wait a moment for the exchange to process cancellations and unlock balance
     time.sleep(1.5)
 
+    _last_exit_attempt[trade_id] = now.timestamp()
     sell_result = sell_position(token_id, size, current_price)
     if not sell_result["success"]:
         err = sell_result.get("error", "").lower()

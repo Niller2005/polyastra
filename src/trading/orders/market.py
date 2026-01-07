@@ -22,7 +22,11 @@ def place_market_order(
         otype: Any = OrderType.FAK if order_type.upper() == "FAK" else OrderType.FOK
         if not silent_on_error:
             log(f"   📊 Placing {side} Market Order: {amount} units")
-        moa = MarketOrderArgs(token_id=token_id, amount=amount, side=side)
+
+        from .utils import truncate_float
+
+        truncated_amount = truncate_float(amount, 4)
+        moa = MarketOrderArgs(token_id=token_id, amount=truncated_amount, side=side)
         signed = client.create_market_order(moa)
         resp: Any = client.post_order(signed, otype)
         status = resp.get("status", "UNKNOWN") if isinstance(resp, dict) else "UNKNOWN"
