@@ -18,15 +18,19 @@ Automated trading bot for **15-minute crypto prediction markets** on Polymarket.
 
 ### 🛡️ Risk Management
 - **Confidence-Based Sizing**: Position size scales with signal strength (configurable multiplier)
+- **Exposure Limits**: Strictly enforces a maximum exposure of **20% per symbol** based on a USDC balance snapshot taken at the start of every window.
 - **Exit Plan**: Places limit sell orders at 99 cents for near-guaranteed profitable exits
 - **🛑 Midpoint Stop Loss**: Primary safety net triggers at $0.30 midpoint price (configurable)
 - **🔄 Hedged Reversal**: Supports holding both sides during trend flips, clearing losers via stop loss
-- **📈 Dynamic Scale-In**: Adds to winning positions with confidence-weighted timing (up to 12m early for high-conviction trades)
+- **📈 Dynamic Scale-In**: Adds to winning positions with confidence-weighted timing (up to 12m early for high-conviction trades), including intelligent size trimming and 5.0 share minimums.
 - **⚡ Real-Time Monitoring**: 10-second position checking with robust order status tracking
+- **🛡️ Safety Protocols**: Automatically cancels all open orders and waits 1.5s before market selling during stop-loss/reversal to prevent balance-lock errors.
 - **🛡️ Self-Healing Logic**: Automatically force-settles "ghost" trades if price data is unavailable for 3+ cycles
 
 ### 🚀 Recent Improvements (Jan 2026)
-- **Enhanced Scale-In**: Implemented confidence-weighted dynamic timing, allowing high-conviction winners to be scaled as early as 12 minutes before expiry.
+- **Balance Snapshotting**: Implemented window-start balance snapshotting to ensure strict 20% exposure limits per symbol.
+- **Robust Stop Loss**: Added mandatory order cancellation and cooldown logic to stop-loss/reversal flows.
+- **Enhanced Scale-In**: Implemented confidence-weighted dynamic timing and automated size trimming to stay within risk limits.
 - **Modular Backend**: Fully refactored `src/trading/orders` and `src/data/market_data` for better maintainability.
 - **WebSocket Integration**: Near-instant P&L and order fill updates via Polymarket's real-time sockets.
 - **Intelligent Position Sync**: Startup logic verifies market resolution and prevents re-adopting settled positions.

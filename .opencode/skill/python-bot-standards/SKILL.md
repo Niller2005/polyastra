@@ -34,3 +34,10 @@ trade_id = execute_trade(trade_params, is_reversal=False)
 - Graceful degradation: return neutral/safe values on error.
 - Use emojis in logs (👀 Monitoring, 🚀 Execution, ✅ Success, ❌ Error).
 
+## Sizing & Safety Mandates
+
+- **Balance Snapshotting**: Use the snapshotted USDC balance (taken at the start of the 15m window) for all sizing calculations to maintain consistency.
+- **Strict 20% Cap**: No single symbol's total exposure (initial entry + scale-ins) may exceed 20% of the snapshotted balance.
+- **Scale-in Trimming**: If a scale-in would exceed the 20% cap, it MUST be trimmed to fit. If the resulting size is < 5.0 shares, skip the trade.
+- **Stop-Loss Reliability**: ALWAYS call `cancel_market_orders(asset_id)` for the specific asset before executing a stop-loss or reversal sell to ensure tokens are unlocked.
+

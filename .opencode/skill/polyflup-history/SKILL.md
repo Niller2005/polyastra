@@ -6,6 +6,10 @@ description: Chronological log of system improvements and session summaries for 
 ## Session Improvements Summary
 
 ### 2026-01-07
+- **Sizing Safety**: Implemented strict USDC balance snapshotting at the start of every 15-minute window. All sizing calculations now use this snapshot to ensure consistency and prevent over-allocation.
+- **Strict Exposure Cap**: Enforced a hard 20% cap per symbol (initial + scale-ins) relative to the window's starting balance.
+- **Scale-In Trimming**: Added logic to automatically trim scale-in order sizes if they would exceed the 20% cap. Orders resulting in < 5.0 shares are skipped entirely.
+- **Stop-Loss Reliability**: Added explicit `cancel_market_orders(asset_id)` calls and a 1.5s wait before stop-loss or reversal sells to unlock tokens held by exit plans or other limit orders, preventing "Insufficient funds" errors.
 - **Knowledge Update**: Added Polymarket Maker Rebates and Taker Fee details to `polymarket-trading` skill. Noted that taker fees are token-based for BUYS and USDC-based for SELLS, with higher effective rates for low-price sells.
 - **Scale-In**: Enhanced with confidence-weighted dynamic timing. Expanded default window to 7.5m (450s) and implemented tiered early entry (up to 12m) for high-confidence (>=90%) and high-price (>=0.80) winners.
 - **Precision**: Reduced balance sync threshold to 0.0001.

@@ -285,7 +285,24 @@ Instead of a fixed timer, the scale-in window is dynamically determined by the t
 1. **Verification**: The bot ensures the position is already in profit (Price > `SCALE_IN_MIN_PRICE`).
 2. **Timing**: Checks if the remaining time in the 15-minute window is within the dynamically calculated threshold.
 3. **Multiplier**: Applies `SCALE_IN_MULTIPLIER` (default 1.5x) to the base bet size for the additional entry.
-4. **Safety**: Only scales in if no other active orders are pending for that market.
+4. **Exposure Check**: Scale-in size is automatically **trimmed** to ensure total symbol exposure does not exceed **20% of the window's starting USDC balance**.
+5. **Min Size**: If the trimmed scale-in size is less than **5.0 shares**, the entry is skipped to avoid exchange rejection.
+6. **Safety**: Only scales in if no other active orders are pending for that market.
+
+---
+
+## Portfolio Risk Management
+
+To prevent over-leveraging and maintain account stability, the bot enforces strict sizing constraints:
+
+### Window Balance Snapshotting
+At the exact start of every 15-minute window (or when the bot first initializes during a window), it takes a **snapshot of the USDC balance**. This snapshot is used as the basis for all sizing calculations during that window. This prevents "compounding" risks within a single window and ensures consistent exposure.
+
+### Per-Symbol Exposure Limit
+Each symbol (e.g., BTC, ETH) is limited to a maximum total exposure of **20% of the snapshotted balance**. 
+- This includes the initial entry and any subsequent scale-ins.
+- If an entry calculation suggests a larger size, it is capped at the 20% limit.
+- This limit protects the account from catastrophic failure in any single market.
 
 ---
 

@@ -148,6 +148,9 @@ uv run python -c "import sqlite3; conn = sqlite3.connect('trades.db'); c = conn.
 |---------|-------------|---------|
 | 1 | Add scale_in_order_id column | ✅ |
 | 2 | Verify timestamp column | ✅ |
+| 3 | Add reversal_triggered column | ✅ |
+| 4 | Add reversal_triggered_at column | ✅ |
+| 5 | Add last_scale_in_at column | ✅ |
 
 ## Rollback
 

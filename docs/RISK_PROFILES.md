@@ -144,10 +144,11 @@ All profiles utilize an intelligent scale-in mechanism for winners:
 - **Configurable Multiplier**: Adjusts the size of the secondary entry (1.0x to 2.5x).
 
 ### Portfolio Risk Management
-All profiles enforce **Maximum Portfolio Exposure**:
-- Prevents over-concentration in correlated markets
-- Skips new trades if total exposure exceeds limit
-- Ensures you never risk too much at once
+All profiles enforce **Strict Exposure Limits**:
+- **Window Snapshotting**: At the start of every window, a USDC balance snapshot is taken.
+- **Per-Symbol Cap**: Exposure to any single symbol is limited to **20% of the snapshotted balance**.
+- **Scale-In Trimming**: Additional entries are automatically trimmed to stay within this 20% cap.
+- **Min Size Enforcement**: Orders must be at least **5.0 shares**; otherwise, they are skipped.
 
 ---
 

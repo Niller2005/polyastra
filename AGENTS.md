@@ -53,5 +53,7 @@ cd ui && npm run dev    # Start dashboard development server
 2. **Deadlock Prevention**: Pass active cursors when calling write functions from within an existing transaction.
 3. **Logging**: Start log lines with relevant emojis (🚀, ✅, ❌, 👀) and include `[SYMBOL]` context.
 4. **Precision**: Use `0.0001` threshold for share balance comparisons.
-5. **Min Size**: Enforce 5.0 share minimum for all limit orders.
-6. **Fees**: Taker fees apply to 15m crypto markets (BUY=Tokens, SELL=USDC). Prefer Maker orders to avoid fees and earn rebates.
+5. **Min Size**: Enforce 5.0 share minimum for all orders (Limit and Market).
+6. **Sizing Limits**: Each symbol is limited to a maximum exposure of 20% of the USDC balance snapshotted at the start of the current window. Scale-in orders must be trimmed to fit this cap; if trimming results in < 5.0 shares, the order is skipped.
+7. **Safety Protocols**: ALWAYS cancel all open orders for a specific asset ID (using `cancel_market_orders(asset_id=...)`) and wait 1.5s before attempting a market sell during stop-loss or reversal scenarios. This prevents "insufficient balance" errors caused by locked funds.
+8. **Fees**: Taker fees apply to 15m crypto markets (BUY=Tokens, SELL=USDC). Prefer Maker orders to avoid fees and earn rebates.
