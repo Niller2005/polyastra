@@ -135,7 +135,9 @@ def place_order(token_id: str, price: float, size: float) -> dict:
     return place_limit_order(token_id, price, size, BUY)
 
 
-def place_batch_orders(orders: List[Dict[str, Any]]) -> List[dict]:
+def place_batch_orders(
+    orders: List[Dict[str, Any]], is_retry: bool = False
+) -> List[dict]:
     if not orders:
         return []
     validated = []
@@ -177,25 +179,53 @@ def place_batch_orders(orders: List[Dict[str, Any]]) -> List[dict]:
             poa.postOnly = op.get("post_only", True)  # type: ignore
             batch.append(poa)
         responses: Any = client.post_orders(batch)
-        for r in responses:
+
+        final_results = []
+        retry_orders = []
+        for i, r in enumerate(responses):
             if isinstance(r, dict):
-                results.append(
-                    {
-                        "success": r.get("success", True) and not r.get("errorMsg"),
-                        "status": r.get("status", "UNKNOWN"),
-                        "order_id": r.get("orderID"),
-                        "error": r.get("errorMsg"),
-                    }
-                )
+                emsg = r.get("errorMsg", "")
+                oid = r.get("orderID")
+                success = r.get("success", True) and not emsg
+
+                if not success and is_post_only_rejection(emsg) and not is_retry:
+                    # Mark for retry as market order
+                    op = validated[i]
+                    adj = -0.01 if op.get("side", BUY) == BUY else 0.01
+                    new_op = op.copy()
+                    new_op["price"] = round(op["price"] + adj, 2)
+                    new_op["post_only"] = False
+                    retry_orders.append((i, new_op))
+                    # Placeholder result that will be replaced by retry result
+                    final_results.append(None)
+                else:
+                    final_results.append(
+                        {
+                            "success": success or bool(oid),
+                            "status": r.get("status", "UNKNOWN"),
+                            "order_id": oid,
+                            "error": emsg,
+                        }
+                    )
             else:
-                results.append(
+                final_results.append(
                     {
                         "success": False,
                         "status": "ERROR",
                         "error": "Invalid response format",
                     }
                 )
-        return results
+
+        if retry_orders and not is_retry:
+            indices, to_retry = zip(*retry_orders)
+            log(
+                f"   👀 {len(to_retry)} Post-Only rejections in batch. Retrying as MARKET orders..."
+            )
+            retry_results = place_batch_orders(list(to_retry), is_retry=True)
+            for idx, retry_res in zip(indices, retry_results):
+                final_results[idx] = retry_res
+
+        return final_results
     except Exception as e:
         log_error(f"Batch order error: {e}")
         return results
