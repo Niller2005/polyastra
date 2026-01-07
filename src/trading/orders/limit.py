@@ -16,7 +16,7 @@ from .utils import (
     _parse_api_error,
     is_post_only_rejection,
 )
-from .balances import get_balance_allowance, ensure_allowance
+from .balances import get_balance_allowance
 
 
 def place_limit_order(
@@ -65,9 +65,11 @@ def place_limit_order(
 
         if has_err and is_post_only_rejection(emsg) and not is_retry:
             # Adjust price and retry once
-            adj = -0.0001 if side == BUY else 0.0001
-            new_price = round(price + adj, 4)
-            log(f"   👀 Post-Only rejection. Retrying at {new_price:.4f}...")
+            adj = -0.01 if side == BUY else 0.01
+            new_price = round(price + adj, 2)
+            log(
+                f"   👀 Post-Only rejection. Retrying as MARKET order at {new_price:.2f}..."
+            )
             return place_limit_order(
                 token_id=token_id,
                 price=new_price,
@@ -76,7 +78,7 @@ def place_limit_order(
                 silent_on_balance_error=silent_on_balance_error,
                 order_type=order_type,
                 expiration=expiration,
-                post_only=post_only,
+                post_only=False,
                 is_retry=True,
             )
 
@@ -91,9 +93,11 @@ def place_limit_order(
 
         if is_post_only_rejection(emsg) and not is_retry:
             # Adjust price and retry once
-            adj = -0.0001 if side == BUY else 0.0001
-            new_price = round(price + adj, 4)
-            log(f"   👀 Post-Only rejection. Retrying at {new_price:.4f}...")
+            adj = -0.01 if side == BUY else 0.01
+            new_price = round(price + adj, 2)
+            log(
+                f"   👀 Post-Only rejection. Retrying as MARKET order at {new_price:.2f}..."
+            )
             return place_limit_order(
                 token_id=token_id,
                 price=new_price,
@@ -102,7 +106,7 @@ def place_limit_order(
                 silent_on_balance_error=silent_on_balance_error,
                 order_type=order_type,
                 expiration=expiration,
-                post_only=post_only,
+                post_only=False,
                 is_retry=True,
             )
 
@@ -156,25 +160,6 @@ def place_batch_orders(orders: List[Dict[str, Any]]) -> List[dict]:
         validated.append(op)
     if not validated:
         return results
-
-    # Pre-flight allowance check for BUY orders
-    total_buy_usd = sum(
-        op["price"] * op["size"] for op in validated if op.get("side", BUY) == BUY
-    )
-    if total_buy_usd > 0:
-        if not ensure_allowance(total_buy_usd):
-            log_error(
-                f"❌ Pre-flight check failed: Insufficient USDC allowance and approval failed."
-            )
-            for _ in validated:
-                results.append(
-                    {
-                        "success": False,
-                        "status": "ALLOWANCE_ERROR",
-                        "error": "Insufficient USDC allowance",
-                    }
-                )
-            return results
 
     try:
         _ensure_api_creds(client)

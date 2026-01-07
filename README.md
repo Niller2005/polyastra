@@ -30,8 +30,6 @@ Automated trading bot for **15-minute crypto prediction markets** on Polymarket.
 ### 🚀 Recent Improvements (Jan 2026)
 - **Graceful Post-Only Rejection**: Limit orders now automatically retry once with a ±0.0001 price adjustment if rejected for crossing the spread (Post-Only), ensuring maker execution.
 - **Heartbeat Integration**: Implemented a 30-second API heartbeat (`client.post_heartbeat(None)`) for sustained connection stability.
-- **Auto-Allowance**: Automatically detects and increases USDC allowance on-chain when required for trading.
-- **Pre-flight Guardrails**: Added mandatory USDC allowance checks before executing `place_batch_orders` to prevent API rejection errors.
 - **Enhanced Precision**: Standardized `MIN_TICK_SIZE` and price/balance comparisons to `0.0001` for higher execution accuracy.
 - **Balance Snapshotting**: Implemented window-start balance snapshotting to ensure strict 20% exposure limits per symbol.
 - **Robust Stop Loss**: Added mandatory order cancellation and cooldown logic to stop-loss/reversal flows.
@@ -41,7 +39,6 @@ Automated trading bot for **15-minute crypto prediction markets** on Polymarket.
 > 💡 **Tip**: See [docs/RISK_PROFILES.md](docs/RISK_PROFILES.md) for pre-configured profiles (Conservative, Balanced, Aggressive, Ultra Aggressive)
 
 ### 💰 Automated Operations
-- **Auto-Claim**: Automatically redeems winnings via CTF contract
 - **Dashboard**: Interactive HTML dashboard with live stats
 - **Discord**: Real-time trade notifications
 - **Database**: Full SQLite tracking of all trades

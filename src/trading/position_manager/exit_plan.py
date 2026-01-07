@@ -148,7 +148,9 @@ def _check_exit_plan(
                     )
                 return
 
-            res = place_limit_order(token_id, EXIT_PRICE_TARGET, sell_size, SELL)
+            res = place_limit_order(
+                token_id, EXIT_PRICE_TARGET, sell_size, SELL, post_only=False
+            )
             if res["success"] or res.get("order_id"):
                 oid = res.get("order_id")
                 c.execute(
@@ -218,7 +220,7 @@ def _check_exit_plan(
                         return True
 
                     res = place_limit_order(
-                        token_id, EXIT_PRICE_TARGET, sell_size, SELL
+                        token_id, EXIT_PRICE_TARGET, sell_size, SELL, post_only=False
                     )
                     if res["success"] or res.get("order_id"):
                         new_oid = res.get("order_id")

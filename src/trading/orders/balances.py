@@ -2,10 +2,8 @@
 
 from typing import Optional, Any
 from py_clob_client.clob_types import BalanceAllowanceParams, AssetType
-from src.utils.logger import log
+from src.utils.logger import log, log_error
 from .client import client
-from src.utils.web3_utils import approve_usdc
-from src.config.settings import EXCHANGE_ADDRESS
 
 
 def get_balance_allowance(token_id: Optional[str] = None) -> Optional[dict]:
@@ -30,24 +28,9 @@ def get_balance_allowance(token_id: Optional[str] = None) -> Optional[dict]:
             }
         return None
     except Exception as e:
-        log(f"⚠️  Error getting balance/allowance: {e}")
+        emsg = str(e)
+        if "rate limit" in emsg.lower():
+            # Don't spam rate limit errors
+            return None
+        log_error(f"⚠️  Error getting balance/allowance: {e}", include_traceback=False)
         return None
-
-
-def ensure_allowance(required_amount: float) -> bool:
-    """Ensure USDC allowance is sufficient, trigger approval if not"""
-    info = get_balance_allowance()
-    if not info:
-        return False
-
-    allowance = info.get("allowance", 0)
-    if allowance < required_amount:
-        log(
-            f"👀 Current USDC allowance (${allowance:.2f}) < required (${required_amount:.2f})"
-        )
-        # Approve a large amount to avoid frequent approvals
-        # Default to $1,000,000 or 10x required if that's somehow larger
-        approve_amount = max(1_000_000.0, required_amount * 10)
-        return approve_usdc(EXCHANGE_ADDRESS, approve_amount)
-
-    return True
