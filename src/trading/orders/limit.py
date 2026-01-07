@@ -25,6 +25,7 @@ def place_limit_order(
     silent_on_balance_error: bool = False,
     order_type: str = "GTC",
     expiration: Optional[int] = None,
+    post_only: bool = True,
 ) -> dict:
     valid, err = _validate_order(price, size)
     if not valid:
@@ -49,7 +50,7 @@ def place_limit_order(
         if otype == OrderType.GTD and expiration:
             oa.expiration = expiration
         signed = client.create_order(oa)
-        return client.post_order(signed, otype)  # type: ignore
+        return client.post_order(signed, otype, post_only=post_only)  # type: ignore
 
     try:
         resp: Any = _execute_with_retry(_place)
@@ -127,7 +128,10 @@ def place_batch_orders(orders: List[Dict[str, Any]]) -> List[dict]:
                 side=op.get("side", BUY),
             )
             signed = client.create_order(oa)
-            batch.append(PostOrdersArgs(order=signed, orderType=OrderType.GTC))  # type: ignore
+            # PostOrdersArgs might have stale type hints in some environments
+            poa = PostOrdersArgs(order=signed, orderType=OrderType.GTC)  # type: ignore
+            poa.postOnly = op.get("post_only", True)  # type: ignore
+            batch.append(poa)
         responses: Any = client.post_orders(batch)
         for r in responses:
             if isinstance(r, dict):
