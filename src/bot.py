@@ -357,7 +357,11 @@ def main():
     sync_positions_with_exchange(addr)
 
     log("🔍 Performing initial position check...")
-    check_open_positions(verbose=True, check_orders=True)
+    window_snapshot_balance = get_balance(addr)
+    log(f"💰 Initial Balance Snapshot: ${window_snapshot_balance:.2f} USDC")
+    check_open_positions(
+        verbose=True, check_orders=True, snapshot_balance=window_snapshot_balance
+    )
 
     last_position_check = time.time()
     last_order_check = time.time()
@@ -388,8 +392,14 @@ def main():
                     range_str = format_window_range(w_start, w_end)
                     # Update logger to use a new file for this window
                     set_log_window(w_start.isoformat())
+
+                    # Snapshot balance at start of window
+                    window_snapshot_balance = get_balance(addr)
                     log("")
                     log(f"🪟  NEW WINDOW: {range_str}")
+                    log(
+                        f"💰 Window Balance Snapshot: ${window_snapshot_balance:.2f} USDC"
+                    )
                     last_window_logged = w_start
 
             is_verbose_cycle = now_ts - last_verbose_log >= 60
@@ -397,7 +407,9 @@ def main():
 
             if now_ts - last_position_check >= 1:
                 check_open_positions(
-                    verbose=is_verbose_cycle, check_orders=is_order_check_cycle
+                    verbose=is_verbose_cycle,
+                    check_orders=is_order_check_cycle,
+                    snapshot_balance=window_snapshot_balance,
                 )
                 last_position_check = now_ts
 
@@ -417,23 +429,22 @@ def main():
                             eligible_markets.append(m)
 
                 if eligible_markets:
-                    current_balance = get_balance(addr)
-                    if current_balance < 1.0:
+                    if window_snapshot_balance < 1.0:
                         if is_verbose_cycle:
                             log(
-                                f"💰 Balance too low ({current_balance:.2f} USDC). Skipping trade evaluation."
+                                f"💰 Snapshot balance too low ({window_snapshot_balance:.2f} USDC). Skipping trade evaluation."
                             )
                     else:
                         if len(eligible_markets) > 1:
                             trade_symbols_batch(
                                 eligible_markets,
-                                current_balance,
+                                window_snapshot_balance,
                                 verbose=is_verbose_cycle,
                             )
                         else:
                             trade_symbol(
                                 eligible_markets[0],
-                                current_balance,
+                                window_snapshot_balance,
                                 verbose=is_verbose_cycle,
                             )
 

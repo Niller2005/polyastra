@@ -86,10 +86,10 @@ def _check_target_price_alignment(
 
 
 def _calculate_bet_size(
-    balance: float, price: float, sizing_confidence: float
+    snapshot_balance: float, price: float, sizing_confidence: float
 ) -> tuple[float, float]:
     """Calculate position size and effective bet amount"""
-    base_bet = balance * (BET_PERCENT / 100.0)
+    base_bet = snapshot_balance * (BET_PERCENT / 100.0)
     # Scaled bet based on confidence
     confidence_multiplier = sizing_confidence * CONFIDENCE_SCALING_FACTOR
     target_bet = base_bet * confidence_multiplier
@@ -97,6 +97,11 @@ def _calculate_bet_size(
     # Ensure at least some minimum multiplier if confidence is very low but valid
     if target_bet < base_bet * 0.5:
         target_bet = base_bet * 0.5
+
+    # STRICT 20% SNAPSHOT LIMIT
+    max_per_symbol = snapshot_balance * 0.20
+    if target_bet > max_per_symbol:
+        target_bet = max_per_symbol
 
     size = round(target_bet / price, 4)
 

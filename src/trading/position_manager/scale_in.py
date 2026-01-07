@@ -37,10 +37,17 @@ def _check_scale_in(
     price_change_pct,
     confidence=0.0,
     target_price=None,
+    snapshot_balance=None,
     verbose=False,
 ):
     if not ENABLE_SCALE_IN:
         return
+
+    # Ensure we have a snapshot_balance, fallback to current if none (safety)
+    if snapshot_balance is None:
+        bal_info = get_balance_allowance()
+        snapshot_balance = bal_info.get("balance", 0) if bal_info else 0
+
     if scale_in_id:
         try:
             # Check status every cycle when an order is pending to ensure fast exit plan updates
@@ -116,19 +123,16 @@ def _check_scale_in(
                     )
                 return
 
-    s_size = size * SCALE_IN_MULTIPLIER
+    # Calculate max allowed for this symbol (20% of snapshot)
+    max_total_allowed_usd = snapshot_balance * 0.20
+    remaining_allowance_usd = max_total_allowed_usd - bet
 
-    # Pre-flight balance check to prevent insufficient funds loop
-    est_cost = s_size * current_price
-    bal_info = get_balance_allowance()
-    if bal_info:
-        usdc_balance = bal_info.get("balance", 0)
-        if usdc_balance < est_cost:
-            if verbose:
-                log(
-                    f"   ⏳ [{symbol}] Scale-in skipped: Insufficient funds (Need ${est_cost:.2f}, Have ${usdc_balance:.2f})"
-                )
-            return
+    if remaining_allowance_usd <= 0:
+        if verbose:
+            log(
+                f"   ⏳ [{symbol}] Scale-in skipped: Symbol already at or above 20% snapshot limit (${bet:.2f} / ${max_total_allowed_usd:.2f})"
+            )
+        return
 
     # Use MAKER order (limit) for scale-in to avoid fees and earn rebates
     from src.utils.websocket_manager import ws_manager
@@ -138,6 +142,43 @@ def _check_scale_in(
     # Fallback to current_price (midpoint) if WS bid not available
     maker_price = bid if bid else current_price
     maker_price = max(0.01, min(0.99, round(maker_price, 2)))
+
+    # Calculate proposed scale-in
+    s_size = size * SCALE_IN_MULTIPLIER
+    proposed_cost = s_size * maker_price
+
+    if proposed_cost > remaining_allowance_usd:
+        # Trim size to fit remaining allowance
+        capped_size = round(remaining_allowance_usd / maker_price, 4)
+
+        # MIN_SIZE check for capped size
+        if capped_size < 5.0:
+            if verbose:
+                log(
+                    f"   ⏳ [{symbol}] Scale-in skipped: Remaining allowance (${remaining_allowance_usd:.2f}) results in size {capped_size:.2f} < 5.0 shares"
+                )
+            return
+
+        log(
+            f"   ⚠️  [{symbol}] Trimming scale-in size from {s_size:.2f} to {capped_size:.2f} to stay within 20% snapshot limit"
+        )
+        s_size = capped_size
+    elif s_size < 5.0:
+        # Even if not capped, check original scale-in size vs min
+        if verbose:
+            log(f"   ⏳ [{symbol}] Scale-in skipped: Size {s_size:.2f} < 5.0 shares")
+        return
+
+    # Pre-flight balance check to prevent insufficient funds loop
+    bal_info = get_balance_allowance()
+    if bal_info:
+        usdc_balance = bal_info.get("balance", 0)
+        if usdc_balance < (s_size * maker_price):
+            if verbose:
+                log(
+                    f"   ⏳ [{symbol}] Scale-in skipped: Insufficient funds (Need ${(s_size * maker_price):.2f}, Have ${usdc_balance:.2f})"
+                )
+            return
 
     log(
         f"📈 [{symbol}] Trade #{trade_id} {side} | 📈 SCALE IN triggered (Maker Order): size={s_size:.2f}, price=${maker_price:.2f}, {t_left:.0f}s left"

@@ -23,7 +23,7 @@ from .exit_plan import _check_exit_plan
 _failed_pnl_checks = {}
 
 
-def check_open_positions(verbose=True, check_orders=False):
+def check_open_positions(verbose=True, check_orders=False, snapshot_balance=None):
     if not _position_check_lock.acquire(blocking=False):
         return
     global _failed_pnl_checks
@@ -40,6 +40,19 @@ def check_open_positions(verbose=True, check_orders=False):
                 if verbose:
                     log("💤 No open positions. Monitoring markets...")
                 return
+
+            # If snapshot_balance is missing (e.g. at startup before loop), fetch it
+            if snapshot_balance is None:
+                from src.utils.web3_utils import get_balance
+                from src.config.settings import PROXY_PK, FUNDER_PROXY
+                from eth_account import Account
+
+                addr = (
+                    FUNDER_PROXY
+                    if FUNDER_PROXY and FUNDER_PROXY.startswith("0x")
+                    else Account.from_key(PROXY_PK).address
+                )
+                snapshot_balance = get_balance(addr)
 
             # PRIORITY 1: Batch price fetching
             token_ids = list(set([str(p[3]) for p in open_positions if p[3]]))
@@ -235,6 +248,7 @@ def check_open_positions(verbose=True, check_orders=False):
                         p_chg_val,
                         confidence=edge,
                         target_price=target,
+                        snapshot_balance=snapshot_balance,
                         verbose=verbose,
                     )
 
