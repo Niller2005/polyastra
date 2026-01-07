@@ -7,6 +7,8 @@ from src.utils.logger import log
 from src.config.settings import DATA_API_BASE
 from .client import client
 from .constants import SELL
+from .constants import SELL
+from .market_info import get_tick_size
 from .market import place_market_order
 from .limit import place_limit_order
 from .balances import get_balance_allowance
@@ -107,7 +109,16 @@ def sell_position(
                     silent_on_error=(attempt < max_retries - 1),
                 )
             else:
-                sell_price = round(max(0.01, current_price - 0.01), 2)
+                tick_size = get_tick_size(token_id)
+                sell_price = max(0.01, current_price - tick_size)
+                if tick_size == 0.1:
+                    sell_price = round(sell_price, 1)
+                elif tick_size == 0.01:
+                    sell_price = round(sell_price, 2)
+                elif tick_size == 0.001:
+                    sell_price = round(sell_price, 3)
+                else:
+                    sell_price = round(sell_price, 4)
                 result = place_limit_order(
                     token_id=token_id,
                     price=sell_price,

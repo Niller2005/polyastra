@@ -8,7 +8,7 @@ from py_clob_client.clob_types import (
 )
 from src.utils.logger import log, log_error
 from .client import client, _ensure_api_creds
-from .constants import BUY
+from .constants import BUY, MIN_TICK_SIZE
 from .utils import (
     _validate_order,
     truncate_float,
@@ -30,7 +30,7 @@ def place_limit_order(
     post_only: bool = True,
     is_retry: bool = False,
 ) -> dict:
-    valid, err = _validate_order(price, size)
+    valid, err = _validate_order(token_id, price, size)
     if not valid:
         return {"success": False, "status": "VALIDATION_ERROR", "error": err}
 
@@ -65,10 +65,13 @@ def place_limit_order(
 
         if has_err and is_post_only_rejection(emsg) and not is_retry:
             # Adjust price and retry once
-            adj = -0.01 if side == BUY else 0.01
-            new_price = round(price + adj, 2)
+            from .market_info import get_tick_size
+
+            tick_size = get_tick_size(token_id)
+            adj = -tick_size if side == BUY else tick_size
+            new_price = round(price + adj, 4)
             log(
-                f"   👀 Post-Only rejection. Retrying as MARKET order at {new_price:.2f}..."
+                f"   👀 Post-Only rejection. Retrying as MARKET order at {new_price:.4f}..."
             )
             return place_limit_order(
                 token_id=token_id,
@@ -93,10 +96,13 @@ def place_limit_order(
 
         if is_post_only_rejection(emsg) and not is_retry:
             # Adjust price and retry once
-            adj = -0.01 if side == BUY else 0.01
-            new_price = round(price + adj, 2)
+            from .market_info import get_tick_size
+
+            tick_size = get_tick_size(token_id)
+            adj = -tick_size if side == BUY else tick_size
+            new_price = round(price + adj, 4)
             log(
-                f"   👀 Post-Only rejection. Retrying as MARKET order at {new_price:.2f}..."
+                f"   👀 Post-Only rejection. Retrying as MARKET order at {new_price:.4f}..."
             )
             return place_limit_order(
                 token_id=token_id,
@@ -143,17 +149,17 @@ def place_batch_orders(
     validated = []
     results = []
     for op in orders[:15]:
-        p, s = op.get("price"), op.get("size")
-        if p is None or s is None:
+        tid, p, s = op.get("token_id"), op.get("price"), op.get("size")
+        if tid is None or p is None or s is None:
             results.append(
                 {
                     "success": False,
                     "status": "VALIDATION_ERROR",
-                    "error": "Price/size required",
+                    "error": "TokenID/Price/size required",
                 }
             )
             continue
-        valid, err = _validate_order(p, s)
+        valid, err = _validate_order(tid, p, s)
         if not valid:
             results.append(
                 {"success": False, "status": "VALIDATION_ERROR", "error": err}
@@ -191,9 +197,12 @@ def place_batch_orders(
                 if not success and is_post_only_rejection(emsg) and not is_retry:
                     # Mark for retry as market order
                     op = validated[i]
-                    adj = -0.01 if op.get("side", BUY) == BUY else 0.01
+                    from .market_info import get_tick_size
+
+                    tick_size = get_tick_size(op["token_id"])
+                    adj = -tick_size if op.get("side", BUY) == BUY else tick_size
                     new_op = op.copy()
-                    new_op["price"] = round(op["price"] + adj, 2)
+                    new_op["price"] = round(op["price"] + adj, 4)
                     new_op["post_only"] = False
                     retry_orders.append((i, new_op))
                     # Placeholder result that will be replaced by retry result

@@ -72,8 +72,13 @@ def truncate_float(val: float, decimals: int) -> float:
     return math.floor(val * factor) / factor
 
 
-def _validate_order(price: float, size: float) -> tuple[bool, Optional[str]]:
-    valid, err = _validate_price(price)
+def _validate_order(
+    token_id: str, price: float, size: float
+) -> tuple[bool, Optional[str]]:
+    from .market_info import get_tick_size
+
+    tick_size = get_tick_size(token_id)
+    valid, err = _validate_price(price, tick_size)
     if not valid:
         return False, err
     valid, err = _validate_size(size)
@@ -103,7 +108,8 @@ def _should_retry(error_str: str) -> bool:
 
 def is_post_only_rejection(error_str: str) -> bool:
     """Check if the error is a post-only rejection (would have executed)"""
-    return "WOULD HAVE EXECUTED" in error_str.upper()
+    err = error_str.upper()
+    return "WOULD HAVE EXECUTED" in err or "CROSSES BOOK" in err
 
 
 def is_404_error(e: Exception) -> bool:

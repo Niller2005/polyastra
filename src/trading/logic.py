@@ -20,6 +20,7 @@ from src.data.market_data import (
     get_funding_bias,
     get_window_start_price,
 )
+from src.trading.orders.market_info import get_tick_size
 from src.trading.strategy import calculate_confidence, bfxd_allows_trade
 from src.trading.orders import get_clob_client
 
@@ -263,9 +264,18 @@ def _prepare_trade_params(
             log("")
         return
 
-    # Clamp and round to minimum tick size (0.01)
+    # Clamp and round to minimum tick size
+    tick_size = get_tick_size(token_id)
     price = max(0.01, min(0.99, price))
-    price = round(price, 2)
+
+    if tick_size == 0.1:
+        price = round(price, 1)
+    elif tick_size == 0.01:
+        price = round(price, 2)
+    elif tick_size == 0.001:
+        price = round(price, 3)
+    else:
+        price = round(price, 4)
 
     size, bet_usd_effective = _calculate_bet_size(balance, price, sizing_confidence)
 

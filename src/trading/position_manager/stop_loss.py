@@ -20,6 +20,12 @@ from src.trading.orders import (
     get_clob_client,
     BUY,
 )
+from src.trading.orders.market_info import (
+    get_tick_size,
+    get_midpoint,
+    get_spread,
+    check_liquidity,
+)
 from src.data.market_data import (
     get_current_spot_price,
     get_window_times,
@@ -72,25 +78,16 @@ def _trigger_price_based_reversal(
             rev_price = float(best_bid) if best_bid is not None else p_up
 
         # Clamp and round
-        rev_price = max(0.01, min(0.99, round(rev_price, 2)))
-
-        # Prepare parameters similar to bot.py
-        actual_side, sizing_confidence = _determine_trade_side(bias, confidence)
-
-        # If strategy strongly agrees with the reversal, use that sizing.
-        # Otherwise use a default sizing for the price-trigger reversal.
-        if actual_side != rev_side:
-            sizing_confidence = 0.40  # Default for price-triggered reversal
-
-        from src.utils.web3_utils import get_balance
-        from src.config.settings import PROXY_PK, FUNDER_PROXY
-        from eth_account import Account
-
-        addr = (
-            FUNDER_PROXY
-            if (FUNDER_PROXY and FUNDER_PROXY.startswith("0x"))
-            else Account.from_key(PROXY_PK).address
-        )
+        tick_size = get_tick_size(rev_token_id)
+        if tick_size == 0.1:
+            rev_price = round(rev_price, 1)
+        elif tick_size == 0.01:
+            rev_price = round(rev_price, 2)
+        elif tick_size == 0.001:
+            rev_price = round(rev_price, 3)
+        else:
+            rev_price = round(rev_price, 4)
+        rev_price = max(0.01, min(0.99, rev_price))
         balance = get_balance(addr)
 
         size, bet_usd = _calculate_bet_size(balance, rev_price, sizing_confidence)

@@ -16,6 +16,7 @@ from src.trading.orders import (
     place_market_order,
     get_balance_allowance,
 )
+from src.trading.orders.market_info import get_tick_size
 from src.data.market_data import get_current_spot_price
 
 
@@ -141,22 +142,16 @@ def _check_scale_in(
 
     # Fallback to current_price (midpoint) if WS bid not available
     maker_price = bid if bid else current_price
-    maker_price = max(0.01, min(0.99, round(maker_price, 2)))
-
-    # Calculate proposed scale-in
-    s_size = size * SCALE_IN_MULTIPLIER
-    proposed_cost = s_size * maker_price
-
-    if proposed_cost > remaining_allowance_usd:
-        # Trim size to fit remaining allowance
-        capped_size = round(remaining_allowance_usd / maker_price, 4)
-
-        # MIN_SIZE check for capped size
-        if capped_size < 5.0:
-            if verbose:
-                log(
-                    f"   ⏳ [{symbol}] Scale-in skipped: Remaining allowance (${remaining_allowance_usd:.2f}) results in size {capped_size:.2f} < 5.0 shares"
-                )
+    tick_size = get_tick_size(token_id)
+    if tick_size == 0.1:
+        maker_price = round(maker_price, 1)
+    elif tick_size == 0.01:
+        maker_price = round(maker_price, 2)
+    elif tick_size == 0.001:
+        maker_price = round(maker_price, 3)
+    else:
+        maker_price = round(maker_price, 4)
+    maker_price = max(0.01, min(0.99, maker_price))
             return
 
         log(
