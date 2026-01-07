@@ -35,6 +35,12 @@ docker compose down
 - `ENABLE_STOP_LOSS`, `ENABLE_TAKE_PROFIT`, `ENABLE_REVERSAL`: YES/NO
 - `MARKETS`: Comma-separated symbols (e.g., BTC,ETH)
 
+## Funding & Bridging
+- **Native Collateral**: The bot trades using **USDC.e** on the Polygon network.
+- **Deposits**: Assets can be deposited from EVM, Solana, or Bitcoin chains. They are automatically swapped to USDC.e on Polygon.
+- **Minimums**: Check `minCheckoutUsd` for each asset to ensure deposits are processed correctly.
+- **Gasless**: Polymarket often uses a relayer for gasless transactions on Polygon for trading operations.
+
 ## Debugging
 - Master Log: `logs/trades_2025.log`
 - Window Logs: `logs/window_YYYY-MM-DD_HH-mm.log`

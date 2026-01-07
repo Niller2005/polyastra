@@ -3,6 +3,29 @@ name: polymarket-trading
 description: Polymarket-specific terminology, trading strategies, and API reference.
 ---
 
+## Technical Infrastructure & API
+
+- **Collateral**: Polymarket uses **USDC.e** (Bridged USDC from Ethereum) on Polygon as the native collateral for all markets.
+- **API Authentication Levels**:
+    - **Public**: No auth required. Used for reading market data, prices, and order books.
+    - **L1 (Level 1)**: Requires a wallet signer (private key) but no API keys. Used for initial setup.
+    - **L2 (Level 2)**: Requires user API credentials (L2 headers). Used for placing trades and managing positions.
+- **Bridging & Deposits**:
+    - Supports multiple chains (EVM, Solana, Bitcoin).
+    - Assets sent to deposit addresses are automatically bridged and swapped to USDC.e on Polygon.
+    - **Minimum Deposit**: Each asset has a `minCheckoutUsd` requirement.
+- **API Gateways**:
+    - **CLOB API**: Central Limit Order Book for trading (placing/cancelling orders).
+    - **Gamma Markets API**: For fetching structured market data and metadata.
+- **WebSocket (WSS)**:
+    - **Market Channel**: Real-time order book and trade updates.
+    - **User Channel**: Real-time account updates (fills, balance changes).
+- **Pricing**: Probabilities displayed on Polymarket are the **midpoint** of the bid-ask spread in the order book.
+- **Order Attribution**: Orders can be attributed to a **Builder ID** for participation in the Polymarket Builder Program, enabling volume-based rewards and revenue sharing.
+- **Rewards Scoring**: Orders may be eligible for liquidity rewards. Eligibility depends on spread, size, and market-specific rules.
+- **Price Constraints**: Polymarket CLOB prices must be between **0.01 and 0.99**.
+- **Token IDs**: Polymarket uses unique Token IDs for each outcome. These may be represented as **Decimal strings** or **Hex hashes**. Internally, PolyFlup normalizes these to Decimal.
+
 ## Terminology & Concepts
 
 - **Exit Plan**: Automated limit sell at $0.99 placed as soon as position opens.
