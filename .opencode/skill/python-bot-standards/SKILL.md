@@ -36,8 +36,19 @@ trade_id = execute_trade(trade_params, is_reversal=False)
 
 ## Sizing & Safety Mandates
 
+- **Tick Size & Precision**: `MIN_TICK_SIZE` is set to `0.0001`. Use this for all price adjustments and rounding.
+- **Graceful Post-Only Handling**: Limit orders that fail with a "Post-Only" violation (crossing the spread) should automatically retry once with a price adjustment of ±0.0001. Use `is_post_only_rejection(error_str)` from `src.trading.orders.utils` to identify these cases.
+- **Pre-flight Allowance Guardrails**: `place_batch_orders` performs a pre-flight check against the USDC allowance before sending orders to the API to prevent `PolyApiException 400` errors.
 - **Balance Snapshotting**: Use the snapshotted USDC balance (taken at the start of the 15m window) for all sizing calculations to maintain consistency.
 - **Strict 20% Cap**: No single symbol's total exposure (initial entry + scale-ins) may exceed 20% of the snapshotted balance.
 - **Scale-in Trimming**: If a scale-in would exceed the 20% cap, it MUST be trimmed to fit. If the resulting size is < 5.0 shares, skip the trade.
 - **Stop-Loss Reliability**: ALWAYS call `cancel_market_orders(asset_id)` for the specific asset before executing a stop-loss or reversal sell to ensure tokens are unlocked.
+
+## Common Code Patterns
+
+### Heartbeat
+The main loop in `src/bot.py` calls `client.heartbeat()` every 30 seconds to maintain stable API connections.
+
+### Balance & Allowance
+`get_balance_allowance(token_id=None)` has been moved to `src.trading.orders.balances` to break circular dependencies. Always import from there.
 

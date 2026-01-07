@@ -101,6 +101,11 @@ def _should_retry(error_str: str) -> bool:
     )
 
 
+def is_post_only_rejection(error_str: str) -> bool:
+    """Check if the error is a post-only rejection (would have executed)"""
+    return "WOULD HAVE EXECUTED" in error_str.upper()
+
+
 def is_404_error(e: Exception) -> bool:
     """Check if the exception is a 404/No Orderbook error"""
     err_str = str(e).lower()

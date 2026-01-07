@@ -1,7 +1,10 @@
 """Order related constants"""
 
 try:
-    from py_clob_client.order_builder.constants import BUY as CLOB_BUY, SELL as CLOB_SELL
+    from py_clob_client.order_builder.constants import (
+        BUY as CLOB_BUY,
+        SELL as CLOB_SELL,
+    )
 except ImportError:
     CLOB_BUY = "BUY"
     CLOB_SELL = "SELL"
@@ -10,7 +13,7 @@ BUY = CLOB_BUY
 SELL = CLOB_SELL
 
 # API Constraints
-MIN_TICK_SIZE = 0.01
+MIN_TICK_SIZE = 0.0001
 MIN_ORDER_SIZE = 5.0  # Minimum size in shares
 
 # Retry Configuration
@@ -30,4 +33,5 @@ API_ERRORS = {
     "DELAYING_ORDER_ERROR": "Error delaying order",
     "FOK_ORDER_NOT_FILLED_ERROR": "FOK order not fully filled",
     "MARKET_NOT_READY": "Market not ready for orders",
+    "POST_ONLY_REJECTED": "Order would have executed",
 }

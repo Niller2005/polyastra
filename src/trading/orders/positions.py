@@ -2,39 +2,14 @@
 
 from typing import Optional, List, Any
 import requests
-from py_clob_client.clob_types import BalanceAllowanceParams, AssetType
+from py_clob_client.clob_types import AssetType
 from src.utils.logger import log
 from src.config.settings import DATA_API_BASE
 from .client import client
 from .constants import SELL
 from .market import place_market_order
 from .limit import place_limit_order
-
-
-def get_balance_allowance(token_id: Optional[str] = None) -> Optional[dict]:
-    """Get balance and allowance"""
-    try:
-        atype: Any = AssetType.CONDITIONAL if token_id else AssetType.COLLATERAL
-        params: Any = BalanceAllowanceParams(asset_type=atype, token_id=token_id or "")
-        result: Any = client.get_balance_allowance(params)
-        if isinstance(result, dict):
-            return {
-                "balance": float(result.get("balance", 0)) / 1_000_000.0,
-                "allowance": float(result.get("allowance", 0)) / 1_000_000.0,
-            }
-        elif (
-            result is not None
-            and hasattr(result, "balance")
-            and hasattr(result, "allowance")
-        ):
-            return {
-                "balance": float(getattr(result, "balance")) / 1_000_000.0,
-                "allowance": float(getattr(result, "allowance")) / 1_000_000.0,
-            }
-        return None
-    except Exception as e:
-        log(f"⚠️  Error getting balance/allowance: {e}")
-        return None
+from .balances import get_balance_allowance
 
 
 def get_current_positions(user_address: str) -> List[dict]:

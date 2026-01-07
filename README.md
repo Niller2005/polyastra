@@ -28,14 +28,14 @@ Automated trading bot for **15-minute crypto prediction markets** on Polymarket.
 - **🛡️ Self-Healing Logic**: Automatically force-settles "ghost" trades if price data is unavailable for 3+ cycles
 
 ### 🚀 Recent Improvements (Jan 2026)
+- **Graceful Post-Only Rejection**: Limit orders now automatically retry once with a ±0.0001 price adjustment if rejected for crossing the spread (Post-Only), ensuring maker execution.
+- **Heartbeat Integration**: Implemented a 30-second API heartbeat (`client.heartbeat()`) for sustained connection stability.
+- **Pre-flight Guardrails**: Added mandatory USDC allowance checks before executing `place_batch_orders` to prevent API rejection errors.
+- **Enhanced Precision**: Standardized `MIN_TICK_SIZE` and price/balance comparisons to `0.0001` for higher execution accuracy.
 - **Balance Snapshotting**: Implemented window-start balance snapshotting to ensure strict 20% exposure limits per symbol.
 - **Robust Stop Loss**: Added mandatory order cancellation and cooldown logic to stop-loss/reversal flows.
 - **Enhanced Scale-In**: Implemented confidence-weighted dynamic timing and automated size trimming to stay within risk limits.
-- **Modular Backend**: Fully refactored `src/trading/orders` and `src/data/market_data` for better maintainability.
-- **WebSocket Integration**: Near-instant P&L and order fill updates via Polymarket's real-time sockets.
-- **Intelligent Position Sync**: Startup logic verifies market resolution and prevents re-adopting settled positions.
-- **Silent Error Handling**: Suppressed 404/Not Found errors during market transitions for cleaner logs.
-- **Low-Balance Protection**: Skips evaluation if balance is < 1.0 USDC to avoid API failures.
+- **Modular Backend**: Fully refactored `src/trading/orders` (including `balances.py` for balance management) and `src/data/market_data` for better maintainability.
 
 > 💡 **Tip**: See [docs/RISK_PROFILES.md](docs/RISK_PROFILES.md) for pre-configured profiles (Conservative, Balanced, Aggressive, Ultra Aggressive)
 

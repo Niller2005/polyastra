@@ -14,11 +14,11 @@ from .management import (
     cancel_all,
 )
 from .positions import (
-    get_balance_allowance,
     get_current_positions,
     get_closed_positions,
     sell_position,
 )
+from .balances import get_balance_allowance
 from .notifications import get_notifications, drop_notifications
 from .market_info import (
     get_midpoint,

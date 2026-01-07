@@ -291,6 +291,32 @@ Instead of a fixed timer, the scale-in window is dynamically determined by the t
 
 ---
 
+## Order Execution & Stability
+
+The bot employs several advanced mechanisms to ensure reliable order execution and API stability on the Polymarket CLOB.
+
+### Graceful Post-Only Rejection
+To maximize liquidity provider rewards and minimize taker fees, the bot uses **Post-Only** limit orders by default. 
+- If an order is rejected because it would have executed immediately (crossing the spread), the bot automatically adjusts the price by **±0.0001** (down for BUY, up for SELL).
+- It then retries the order exactly **once**. This ensures the order sits on the book as a maker order while remaining competitive.
+
+### Pre-flight Guardrails
+Before sending a batch of orders (`place_batch_orders`), the bot performs a **pre-flight USDC allowance check**.
+- It calculates the total USDC required for all BUY orders in the batch.
+- It verifies this against the current allowance granted to the Polymarket CTF contract.
+- If allowance is insufficient, the batch is blocked to prevent `PolyApiException 400` errors, and an error is logged.
+
+### Heartbeat & Stability
+To maintain a stable connection with the Polymarket API during long-running sessions:
+- The bot executes a **30-second heartbeat** (`client.heartbeat()`) within the main monitoring loop.
+- This prevents session timeouts and ensures the API client remains authenticated and responsive.
+
+### Precision & Tick Size
+- **MIN_TICK_SIZE**: The bot strictly adheres to a tick size of **0.0001** for all price calculations and order placements.
+- **Comparison Threshold**: All balance and share comparisons use a **0.0001** epsilon to account for floating-point precision in crypto markets.
+
+---
+
 ## Portfolio Risk Management
 
 To prevent over-leveraging and maintain account stability, the bot enforces strict sizing constraints:

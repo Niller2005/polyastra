@@ -369,6 +369,7 @@ def main():
     last_exit_stats_log = time.time()
     last_entry_check = 0
     last_settle_check = time.time()
+    last_heartbeat = 0
 
     log("🏁 Bot initialized. Entering continuous monitoring loop...")
 
@@ -455,6 +456,15 @@ def main():
             if now_ts - last_settle_check >= 60:
                 check_and_settle_trades()
                 last_settle_check = now_ts
+
+            if now_ts - last_heartbeat >= 30:
+                try:
+                    from src.trading.orders import client
+
+                    client.heartbeat()
+                    last_heartbeat = now_ts
+                except Exception as e:
+                    log(f"⚠️  Heartbeat error: {e}")
 
             if is_verbose_cycle:
                 last_verbose_log = now_ts

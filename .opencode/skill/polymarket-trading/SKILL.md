@@ -10,7 +10,8 @@ description: Polymarket-specific terminology, trading strategies, and API refere
 - **Midpoint Stop Loss**: Market sell triggered by midpoint price dropping to/below $0.30.
 - **Scale-In**: Adding capital to winning positions via Market Orders (FAK).
 - **Underdog**: Side trading below $0.50. Requires >40% confidence for entry.
-- **Tick Size**: Minimum price increment allowed for a market (e.g., 0.01 or 0.001).
+- **Tick Size**: Minimum price increment allowed for a market. Standard for 15m crypto markets is `0.0001`.
+- **Post-Only Order**: A limit order that is guaranteed to be a maker (adds liquidity). If it would match an existing order (cross the spread), it is rejected. PolyFlup handles this by retrying once with a ±0.0001 price adjustment.
 
 ## Strategy Nuances
 - **Sizing Consistency**: Sizing is calculated against a USDC balance snapshot taken at the **exact start** of each 15-minute window.

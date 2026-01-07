@@ -14,7 +14,9 @@ from .utils import (
     truncate_float,
     _execute_with_retry,
     _parse_api_error,
+    is_post_only_rejection,
 )
+from .balances import get_balance_allowance
 
 
 def place_limit_order(
@@ -26,6 +28,7 @@ def place_limit_order(
     order_type: str = "GTC",
     expiration: Optional[int] = None,
     post_only: bool = True,
+    is_retry: bool = False,
 ) -> dict:
     valid, err = _validate_order(price, size)
     if not valid:
@@ -59,6 +62,24 @@ def place_limit_order(
         emsg = resp.get("errorMsg", "") if isinstance(resp, dict) else ""
         success = resp.get("success", True) if isinstance(resp, dict) else True
         has_err = bool(emsg) and not bool(oid)
+
+        if has_err and is_post_only_rejection(emsg) and not is_retry:
+            # Adjust price and retry once
+            adj = -0.0001 if side == BUY else 0.0001
+            new_price = round(price + adj, 4)
+            log(f"   👀 Post-Only rejection. Retrying at {new_price:.4f}...")
+            return place_limit_order(
+                token_id=token_id,
+                price=new_price,
+                size=size,
+                side=side,
+                silent_on_balance_error=silent_on_balance_error,
+                order_type=order_type,
+                expiration=expiration,
+                post_only=post_only,
+                is_retry=True,
+            )
+
         return {
             "success": (success and not has_err) or bool(oid),
             "status": status,
@@ -67,6 +88,24 @@ def place_limit_order(
         }
     except Exception as e:
         emsg = _parse_api_error(str(e))
+
+        if is_post_only_rejection(emsg) and not is_retry:
+            # Adjust price and retry once
+            adj = -0.0001 if side == BUY else 0.0001
+            new_price = round(price + adj, 4)
+            log(f"   👀 Post-Only rejection. Retrying at {new_price:.4f}...")
+            return place_limit_order(
+                token_id=token_id,
+                price=new_price,
+                size=size,
+                side=side,
+                silent_on_balance_error=silent_on_balance_error,
+                order_type=order_type,
+                expiration=expiration,
+                post_only=post_only,
+                is_retry=True,
+            )
+
         oid = None
         try:
             r: Any = getattr(e, "response", None)
@@ -117,6 +156,29 @@ def place_batch_orders(orders: List[Dict[str, Any]]) -> List[dict]:
         validated.append(op)
     if not validated:
         return results
+
+    # Pre-flight allowance check for BUY orders
+    total_buy_usd = sum(
+        op["price"] * op["size"] for op in validated if op.get("side", BUY) == BUY
+    )
+    if total_buy_usd > 0:
+        bal_info = get_balance_allowance()
+        if bal_info:
+            allowance = bal_info.get("allowance", 0)
+            if allowance < total_buy_usd:
+                log_error(
+                    f"❌ Pre-flight check failed: USDC allowance ({allowance:.2f}) < required (${total_buy_usd:.2f})"
+                )
+                for _ in validated:
+                    results.append(
+                        {
+                            "success": False,
+                            "status": "ALLOWANCE_ERROR",
+                            "error": "Insufficient USDC allowance",
+                        }
+                    )
+                return results
+
     try:
         _ensure_api_creds(client)
         batch = []
