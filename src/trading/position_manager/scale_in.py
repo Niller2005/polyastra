@@ -152,6 +152,21 @@ def _check_scale_in(
     else:
         maker_price = round(maker_price, 4)
     maker_price = max(0.01, min(0.99, maker_price))
+
+    # Calculate proposed scale-in
+    s_size = size * SCALE_IN_MULTIPLIER
+    proposed_cost = s_size * maker_price
+
+    if proposed_cost > remaining_allowance_usd:
+        # Trim size to fit remaining allowance
+        capped_size = round(remaining_allowance_usd / maker_price, 4)
+
+        # MIN_SIZE check for capped size
+        if capped_size < 5.0:
+            if verbose:
+                log(
+                    f"   ⏳ [{symbol}] Scale-in skipped: Remaining allowance (${remaining_allowance_usd:.2f}) results in size {capped_size:.2f} < 5.0 shares"
+                )
             return
 
         log(
