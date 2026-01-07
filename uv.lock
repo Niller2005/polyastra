@@ -1594,7 +1594,7 @@ dependencies = [
 requires-dist = [
     { name = "eth-account", specifier = ">=0.13.7" },
     { name = "pandas", specifier = ">=2.3.3" },
-    { name = "py-clob-client", specifier = ">=0.34.1" },
+    { name = "py-clob-client", specifier = ">=0.34.4" },
     { name = "python-dotenv", specifier = ">=1.2.1" },
     { name = "requests", specifier = ">=2.32.5" },
     { name = "ta", specifier = ">=0.11.0" },
@@ -1745,7 +1745,7 @@ wheels = [
 
 [[package]]
 name = "py-clob-client"
-version = "0.34.1"
+version = "0.34.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "eth-account" },
@@ -1756,9 +1756,9 @@ dependencies = [
     { name = "py-order-utils" },
     { name = "python-dotenv" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/74/8f/90e17c85f1e2a185294f188ac7cf308da20960dd5902eb55e5fc844a2d14/py_clob_client-0.34.1.tar.gz", hash = "sha256:d8ae237c0c047a1d8b98665e173411a1c5076aa371e9903b3b42f59be6110c8f", size = 37310, upload-time = "2025-12-24T21:42:01.109Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/eb/1b/a953598f612910e9d15121c948bf10880c08e09feb6fb027b6947ee37ed2/py_clob_client-0.34.4.tar.gz", hash = "sha256:297a43045b3906a8f31ae2acf060abd8d317e7b4c029149104d0fc4f9a9aa7a8", size = 37885, upload-time = "2026-01-06T20:54:31.01Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7f/5d/4c897173e7f078a5c9b4dbf982ccb59fb08446c8ebf1bd6673a6e81a04e1/py_clob_client-0.34.1-py3-none-any.whl", hash = "sha256:ad75358df29470ff9967831bd04060cca64ecf8e037fa938450abc587069f925", size = 42879, upload-time = "2025-12-24T21:41:59.615Z" },
+    { url = "https://files.pythonhosted.org/packages/b8/80/b2146ddfc311f481690747377f456cb4439b45158af05748385182e5ed77/py_clob_client-0.34.4-py3-none-any.whl", hash = "sha256:c280e826643586bd72cff0a49ee2546106b386ed5c1fe68b8a427766b0ea5d27", size = 43534, upload-time = "2026-01-06T20:54:29.879Z" },
 ]
 
 [[package]]
