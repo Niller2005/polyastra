@@ -10,6 +10,7 @@ from src.utils.logger import log
 from src.trading.orders import (
     get_order,
     cancel_order,
+    cancel_orders,
     place_limit_order,
     get_balance_allowance,
     get_orders,
@@ -44,12 +45,19 @@ def _check_exit_plan(
     is_scoring=None,
     last_scale_in_at=None,
 ):
+    try:
+        size = float(size)
+    except Exception:
+        size = 0.0
+
     if not ENABLE_EXIT_PLAN or buy_status not in ["FILLED", "MATCHED"] or size == 0:
         return False
 
     repaired = False
     balance_info = get_balance_allowance(token_id)
-    actual_bal = balance_info.get("balance", 0) if balance_info else 0
+    balance_known = balance_info is not None
+    actual_bal = float(balance_info.get("balance", 0)) if balance_known else None
+    usable_bal = actual_bal if (actual_bal is not None and actual_bal > 0) else None
 
     try:
         age = (now - datetime.fromisoformat(ts)).total_seconds()
@@ -105,13 +113,30 @@ def _check_exit_plan(
                 except:
                     pass
 
-            needs_sync = False
-            if actual_bal > size + 0.0001:
-                needs_sync = True  # Always sync if we have more tokens than DB thinks
-            elif age > 60 and scale_in_age > 60 and abs(actual_bal - size) > 0.0001:
-                needs_sync = True  # Periodic sync for other cases
+            # If we have a confirmed 0 balance right after entry/scale-in, wait a bit
+            # for the wallet API to catch up. If balance is unknown (rate limited), do not block.
+            if balance_known and actual_bal == 0 and age < 60 and scale_in_age < 60:
+                if verbose:
+                    log(
+                        f"   ⏳ [{symbol}] #{trade_id} Exit pending: Balance is 0.0 (waiting for API sync...)"
+                    )
+                return
 
-            if needs_sync:
+            needs_sync = False
+            if balance_known and actual_bal is not None:
+                if actual_bal > size + 0.0001:
+                    needs_sync = (
+                        True  # Always sync if we have more tokens than DB thinks
+                    )
+                elif (
+                    actual_bal > 0
+                    and age > 60
+                    and scale_in_age > 60
+                    and abs(actual_bal - size) > 0.0001
+                ):
+                    needs_sync = True  # Periodic sync for other cases
+
+            if needs_sync and actual_bal is not None:
                 if actual_bal > 0:
                     log(
                         f"   🔧 [{symbol}] #{trade_id} Syncing size to match balance: {size:.4f} -> {actual_bal:.4f}"
@@ -122,8 +147,8 @@ def _check_exit_plan(
                     )
                     size = actual_bal
                 else:
-                    # Balance is 0
-                    if age > 300:
+                    # Balance is 0. If it stays 0 long enough, treat as a ghost trade.
+                    if balance_known and age > 300:
                         log(
                             f"   ⚠️  [{symbol}] #{trade_id} has 0 balance after 5m. Settling as ghost trade."
                         )
@@ -132,14 +157,16 @@ def _check_exit_plan(
                             (trade_id,),
                         )
                         return
-                    if verbose:
+                    if verbose and balance_known:
                         log(
-                            f"   ⏳ [{symbol}] #{trade_id} Exit pending: Balance is 0.0 (waiting for API sync...)"
+                            f"   ⏳ [{symbol}] #{trade_id} Balance is 0.0 but DB shows position; attempting exit anyway..."
                         )
-                    return
 
-            # Ensure we don't try to sell more than we actually have, even if threshold didn't trigger
-            sell_size = truncate_float(min(size, actual_bal), 2)
+            # If we have a positive, trusted balance, cap sell size to it.
+            target_raw = size
+            if usable_bal is not None:
+                target_raw = min(size, usable_bal)
+            sell_size = truncate_float(target_raw, 2)
 
             if sell_size < 5.0:
                 if verbose:
@@ -164,10 +191,38 @@ def _check_exit_plan(
                 err = res.get("error", "Unknown error")
                 log(f"   ❌ [{symbol}] Failed to place exit plan: {err}")
                 if "Insufficient funds" in str(err):
-                    # Clear cooldown to retry immediately after balance re-sync in next cycle
-                    _last_exit_attempt.pop(trade_id, None)
-                else:
-                    _last_exit_attempt[trade_id] = now.timestamp()
+                    # For a SELL limit order this usually means the conditional tokens are
+                    # not currently available (locked in another open SELL order or temporarily desynced).
+                    # Try freeing any other SELL orders for this asset, then retry after cooldown.
+                    try:
+                        open_orders = get_orders(asset_id=token_id)
+                        sell_ids = []
+                        for o in open_orders:
+                            o_side = (
+                                o.get("side")
+                                if isinstance(o, dict)
+                                else getattr(o, "side", "")
+                            )
+                            if o_side == "SELL":
+                                oid = (
+                                    o.get("id")
+                                    if isinstance(o, dict)
+                                    else getattr(o, "id", "")
+                                )
+                                if oid:
+                                    sell_ids.append(str(oid))
+                        if sell_ids:
+                            log(
+                                f"   ⚠️  [{symbol}] Canceling {len(sell_ids)} existing SELL orders to free balance."
+                            )
+                            cancel_orders(sell_ids)
+                    except Exception as e:
+                        if verbose:
+                            log(
+                                f"   ⚠️  [{symbol}] Error canceling existing SELL orders: {e}"
+                            )
+
+                _last_exit_attempt[trade_id] = now.timestamp()
 
     elif limit_sell_id:
         # 1-SECOND CYCLE HEALING: Ensure exit plan size matches current trade size
@@ -188,16 +243,22 @@ def _check_exit_plan(
                         pass
 
                 needs_sync = False
-                if actual_bal > size + 0.0001:
-                    needs_sync = (
-                        True  # Always sync if we have more tokens than DB thinks
-                    )
-                elif age > 60 and scale_in_age > 60 and abs(actual_bal - size) > 0.0001:
-                    needs_sync = (
-                        True  # Periodic sync for other cases (e.g. fewer tokens)
-                    )
+                if balance_known and actual_bal is not None:
+                    if actual_bal > size + 0.0001:
+                        needs_sync = (
+                            True  # Always sync if we have more tokens than DB thinks
+                        )
+                    elif (
+                        actual_bal > 0
+                        and age > 60
+                        and scale_in_age > 60
+                        and abs(actual_bal - size) > 0.0001
+                    ):
+                        needs_sync = (
+                            True  # Periodic sync for other cases (e.g. fewer tokens)
+                        )
 
-                if needs_sync and actual_bal > 0:
+                if needs_sync and actual_bal is not None and actual_bal > 0:
                     log(
                         f"   🔧 [{symbol}] #{trade_id} Syncing size to match balance (active order): {size:.4f} -> {actual_bal:.4f}"
                     )
@@ -207,7 +268,10 @@ def _check_exit_plan(
                     )
                     size = actual_bal
 
-                target_size = truncate_float(min(size, actual_bal), 2)
+                target_raw = size
+                if usable_bal is not None:
+                    target_raw = min(size, usable_bal)
+                target_size = truncate_float(target_raw, 2)
                 if truncate_float(o_size, 2) != target_size:
                     # Repair needed
                     cancel_order(limit_sell_id)
@@ -257,7 +321,7 @@ def _check_exit_plan(
                         (trade_id,),
                     )
                     limit_sell_id = None
-                    _last_exit_attempt.pop(trade_id, None)
+                    _last_exit_attempt[trade_id] = now.timestamp()
         else:
             # Order not found on exchange
             if check_orders:
@@ -269,7 +333,7 @@ def _check_exit_plan(
                     (trade_id,),
                 )
                 limit_sell_id = None
-                _last_exit_attempt.pop(trade_id, None)
+                _last_exit_attempt[trade_id] = now.timestamp()
 
     if verbose and side:
         if buy_status == "EXIT_PLAN_PENDING_SETTLEMENT":
